@@ -58,9 +58,9 @@ function weatherHandler(request, response) {
   let longitude = request.query.longitude;
 
   getWeather(latitude, longitude)
-  .then(val =>{
-    console.log(val);
-    response.status(200).json(val);});
+    .then(val => {
+      response.status(200).json(val);
+    });
 }
 
 
@@ -91,57 +91,40 @@ function trailsHandler(request, response) {
   let longitude = request.query.longitude;
 
   getTrails(latitude, longitude)
-  .then(val =>{
-    console.log(val);
-    response.status(200).json(val);});
+    .then(val => {
+      response.status(200).json(val);
+    });
 }
 
 function getTrails(latitude, longitude) {
   let trailsArr = [];
   let key = process.env.TRAILS_KEY;
-  let url = `https://api.weatherbit.io/v2.0/forecast/daily?lat=${latitude}&lon=${longitude}&days=8&units=S&key=${key}`;
-
+  let url = `https://www.hikingproject.com/data/get-trails?lat=${latitude}04&lon=${longitude}&key=${key}`;
   return superagent.get(url)
-    .then(weatherData => {
-      let data = weatherData.body.data;
+    .then(trailsData => {
+      let data = trailsData.body.trails;
       return data;
     })
-    .then(weatherData => {
-      weatherSummaries = weatherData.map(val => {
-        return new Weather(val)
+    .then(trailsData => {
+      trailsArr = trailsData.map(val => {
+        return new Trail(val)
       });
-      return weatherSummaries
+      return trailsArr
     });
 }
-/*
-[
-  {
-    "name": "Rattlesnake Ledge",
-    "location": "Riverbend, Washington",
-    "length": "4.3",
-    "stars": "4.4",
-    "star_votes": "84",
-    "summary": "An extremely popular out-and-back hike to the viewpoint on Rattlesnake Ledge.",
-    "trail_url": "https://www.hikingproject.com/trail/7021679/rattlesnake-ledge",
-    "conditions": "Dry: The trail is clearly marked and well maintained.",
-    "condition_date": "2018-07-21",
-    "condition_time": "0:00:00 "
-  },
-  {
-    "name": "Mt. Si",
-    "location": "Tanner, Washington",
-    "length": "6.6",
-    "stars": "4.4",
-    "star_votes": "72",
-    "summary": "A steep, well-maintained trail takes you atop Mt. Si with outrageous views of Puget Sound.",
-    "trail_url": "https://www.hikingproject.com/trail/7001016/mt-si",
-    "conditions": "Dry",
-    "condition_date": "2018-07-22",
-    "condition_time": "0:17:22 "
-  },
-  ...
-] 
-*/
+function Trail(trail) {
+  this.name = trail.name;
+  this.location = trail.location;
+  this.length = trail.length;
+  this.stars = trail.stars;
+  this.star_votes = trail.starVotes;
+  this.summary = trail.summary;
+  this.trail_url = trail.url;
+  this.conditions = trail.conditionStatus;
+  this.condition_date = trail.conditionDate.split(" ")[0];
+  this.condition_time = trail.conditionDate.split(" ")[1];
+
+}
 
 // Make sure the server is listening for requests
 app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
