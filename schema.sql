@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS city (
     lat int
 );
 
-INSERT INTO city(city_name,city_location,lon,lat) VALUES ('Amman','hello',35.00,34.00);
+INSERT INTO city(city_name,city_location,lon,lat) VALUES ('Mars','hello',35.00,34.00);
