@@ -83,7 +83,7 @@ function getWeather(latitude, longitude) {
 }
 
 function Weather(day) {
-  this.description = day.weather.description;
+  this.forecast = day.weather.description;
   this.time = new Date(day.valid_date).toString().slice(0, 15);
 }
 function trailsHandler(request, response) {
