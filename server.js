@@ -1,17 +1,11 @@
 'use strict';
 
-// Load Environment Variables from the .env file
 require('dotenv').config();
-
-// Application Dependencies
+const pg = require('pg');
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
-const fs = require('fs');
-var storedDataResult;
-var storedData;
-var newData;
-// Application Setup
+const client = new pg.Client(process.env.DATABASE_URL);
 const PORT = process.env.PORT;
 const app = express();
 app.use(cors());
@@ -19,37 +13,32 @@ app.use(cors());
 app.get('/', (request, response) => {
   response.send('Home Page!');
 });
-
-// Route Definitions
 app.get('/location', locationHandler);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
 
-
-// Route Handlers
 function locationHandler(request, response) {
-  storedDataResult =null;
-  storedData=null;
-  newData=[];
-
   const city = request.query.city;
-  storedData = JSON.parse(fs.readFileSync('storage.json'));
 
-  storedDataResult = compareStorage(city, storedData.city) || false;
+  let SQL = `SELECT * FROM city WHERE city_name='${city}';`;
+  client.query(SQL)
+    .then(results => {
+      if (results.rows.length) {
+        response.status(200).json(results.rows);
+      }
+      else {
+        getLocation(city)
+          .then(locationData => {
+            console.log('GOOOD- NOT fOUND-2');
+            let SQL = `INSERT INTO city (city_name,city_location,lon,lat) VALUES ($1,$2,$3,$4);`;
+            let safeValues = [locationData.search_query, locationData.formatted_query,parseInt(locationData.longitude), parseInt(locationData.latitude)];
+            client.query(SQL, safeValues);
+            response.status(200).json(locationData);
+          });
+      }
+    });
 
-  if (storedDataResult !== false) {
-    response.status(200).json(storedDataResult.locationData);
-
-  } else {
-    getLocation(city)
-      .then(locationData => {
-        newData.push(city,locationData);
-        response.status(200).json(locationData);
-      })
-  }
-
-}
-
+};
 function getLocation(city) {
   let key = process.env.LOCATIONIQ_KEY;
   let url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
@@ -59,31 +48,20 @@ function getLocation(city) {
       return locationData;
     })
 }
-
 function Location(city, geoData) {
   this.search_query = city;
   this.formatted_query = geoData[0].display_name;
   this.latitude = geoData[0].lat;
   this.longitude = geoData[0].lon;
 }
-
 function weatherHandler(request, response) {
-
-  if (storedDataResult !== false) {
-    response.status(200).json(storedDataResult.weatherData);
-  } else {
-    let latitude = request.query.latitude;
-    let longitude = request.query.longitude;
-    getWeather(latitude, longitude)
-      .then(val => {
-        newData.push(val);
-        response.status(200).json(val);
-      });
-  }
-
+  let latitude = request.query.latitude;
+  let longitude = request.query.longitude;
+  getWeather(latitude, longitude)
+    .then(val => {
+      response.status(200).json(val);
+    });
 }
-
-
 function getWeather(latitude, longitude) {
   let weatherSummaries = [];
   let key = process.env.WEATHER_KEY;
@@ -101,26 +79,18 @@ function getWeather(latitude, longitude) {
       return weatherSummaries
     });
 }
-
 function Weather(day) {
   this.forecast = day.weather.description;
   this.time = new Date(day.valid_date).toString().slice(0, 15);
 }
 function trailsHandler(request, response) {
-  if (storedDataResult !== false) {
-    response.status(200).json(storedDataResult.trailsData);
-  } else {
-    let latitude = request.query.latitude;
-    let longitude = request.query.longitude;
-    getTrails(latitude, longitude)
-      .then(val => {
-        newData.push(val);
-        updateStorage(storedData, newData);
-        response.status(200).json(val);
-      });
-  }
+  let latitude = request.query.latitude;
+  let longitude = request.query.longitude;
+  getTrails(latitude, longitude)
+    .then(val => {
+      response.status(200).json(val);
+    });
 }
-
 function getTrails(latitude, longitude) {
   let trailsArr = [];
   let key = process.env.TRAILS_KEY;
@@ -148,30 +118,11 @@ function Trail(trail) {
   this.conditions = trail.conditionStatus;
   this.condition_date = trail.conditionDate.split(" ")[0];
   this.condition_time = trail.conditionDate.split(" ")[1];
-
 }
-function updateStorage(storedData, newData) {
-  storedData.city.push(new StoragePlace(newData));
-  let UpdatedStoredData = JSON.stringify(storedData);
-  fs.writeFileSync('storage.json', UpdatedStoredData);
-}
-function StoragePlace(newData) {
+client.connect()
+  .then(() => {
+    app.listen(PORT, () =>
+      console.log(`listening on ${PORT}`)
+    );
+  })
 
-  this.cityName = newData[0];
-  this.locationData = newData[1];
-  this.weatherData = newData[2];
-  this.trailsData = newData[3];
-
-}
-function compareStorage(city, storedData) {
-  for (let index = 0; index < storedData.length; index++) {
-    if (city.toUpperCase() === (storedData[index].cityName).toUpperCase()) {
-      return storedData[index]
-    }
-  }
-  return false
-}
-
-
-// Make sure the server is listening for requests
-app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
