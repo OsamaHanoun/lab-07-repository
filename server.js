@@ -20,18 +20,18 @@ app.get('/trails', trailsHandler);
 function locationHandler(request, response) {
   const city = request.query.city;
 
-  let SQL = `SELECT * FROM city WHERE city_name='${city}';`;
+  let SQL = `SELECT * FROM city WHERE search_querycity='${city}';`;
   client.query(SQL)
     .then(results => {
       if (results.rows.length) {
-        response.status(200).json(results.rows);
+        response.status(200).json(results.rows[0]);
       }
       else {
         getLocation(city)
           .then(locationData => {
             console.log('GOOOD- NOT fOUND-2');
-            let SQL = `INSERT INTO city (city_name,city_location,lon,lat) VALUES ($1,$2,$3,$4);`;
-            let safeValues = [locationData.search_query, locationData.formatted_query,parseInt(locationData.longitude), parseInt(locationData.latitude)];
+            let SQL = `INSERT INTO city (search_querycity,formatted_query,longitude,latitude) VALUES ($1,$2,$3,$4);`;
+            let safeValues = [locationData.search_query, locationData.formatted_query, locationData.longitude, locationData.latitude];
             client.query(SQL, safeValues);
             response.status(200).json(locationData);
           });
@@ -125,4 +125,3 @@ client.connect()
       console.log(`listening on ${PORT}`)
     );
   })
-
